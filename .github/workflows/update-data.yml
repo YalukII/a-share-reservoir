@@ -1,0 +1,51 @@
+name: 更新 data.json（蓄水池取数）
+
+on:
+  schedule:
+    # 每月 16 日与每周一 01:30 UTC（北京时间 09:30）跑一次。
+    # 金融数据多在月中发布，月度 + 周度兜底。cron 用 UTC。
+    - cron: "30 1 16 * *"
+    - cron: "30 1 * * 1"
+  workflow_dispatch:        # 允许在 Actions 页手动触发
+
+# 需要写权限才能 commit 回仓库
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run pull.py
+        # Tushare 为可选备选源；如用到，把 token 放在仓库 Secrets，勿写进代码/data.json
+        env:
+          TUSHARE_TOKEN: ${{ secrets.TUSHARE_TOKEN }}
+        run: python pull.py
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json index.html etf_share_history.json
+          if git diff --staged --quiet; then
+            echo "数据无变化，跳过提交。"
+          else
+            git commit -m "chore(data): 自动更新 data.json [skip ci] $(date -u +%Y-%m-%d)"
+            git push
+          fi

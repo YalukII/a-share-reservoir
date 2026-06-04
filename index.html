@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股「蓄水池」监控仪表盘</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#07151a;--ink2:#0b1f26;--panel:rgba(255,255,255,.035);--panel-line:rgba(108,196,196,.16);--water:#27d0bd;--water-deep:#0e8c86;--amber:#f3b24a;--red:#ef6a5f;--txt:#e7f1f1;--muted:#86a3a6;--muted2:#5e7a7e;--font-display:'Fraunces','Noto Serif SC',Georgia,serif;--font-body:'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--font-body);color:var(--txt);background:radial-gradient(120% 80% at 80% -10%,rgba(39,208,189,.10),transparent 55%),radial-gradient(100% 70% at 0% 110%,rgba(14,140,134,.10),transparent 50%),linear-gradient(180deg,var(--ink) 0%,var(--ink2) 100%);background-repeat:no-repeat;min-height:100vh;line-height:1.7;-webkit-font-smoothing:antialiased;position:relative}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+  nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:rgba(7,21,26,.72);border-bottom:1px solid var(--panel-line)}
+  nav .wrap{display:flex;align-items:center;gap:22px;height:60px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav .wrap::-webkit-scrollbar{display:none}
+  nav .brand{font-family:var(--font-mono);font-size:13px;letter-spacing:.18em;color:var(--water);white-space:nowrap;font-weight:700}
+  nav a{color:var(--muted);text-decoration:none;font-size:13.5px;white-space:nowrap;transition:color .2s}
+  nav a:hover{color:var(--txt)}
+  .navpill{margin-left:auto;font-family:var(--font-mono);font-size:12px;padding:5px 12px;border-radius:99px;border:1px solid var(--panel-line);white-space:nowrap;color:var(--water)}
+  header.hero{padding:74px 0 30px}
+  .kicker{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.32em;color:var(--water);text-transform:uppercase;margin-bottom:20px}
+  h1{font-family:var(--font-display);font-weight:900;font-size:clamp(38px,6.4vw,72px);line-height:1.02;letter-spacing:-.01em}
+  h1 .em{font-style:italic;font-weight:600;color:var(--water)}
+  .lede{max-width:640px;margin-top:22px;color:var(--muted);font-size:16.5px;font-weight:300}
+  .lede b{color:var(--txt);font-weight:500}
+  .rv{opacity:0;transform:translateY(22px);animation:rise .9s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+  section{padding:46px 0;border-top:1px solid rgba(108,196,196,.08)}
+  .sec-h{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+  .sec-n{font-family:var(--font-mono);font-size:13px;color:var(--water-deep)}
+  .sec-t{font-family:var(--font-display);font-size:clamp(24px,3.4vw,34px);font-weight:600;letter-spacing:-.01em}
+  .sec-sub{color:var(--muted);font-size:15px;margin-bottom:18px;max-width:720px;font-weight:300}
+  .sec-sub b{color:var(--txt);font-weight:500}
+  .info-btn{margin-left:auto;align-self:center;font-family:var(--font-mono);font-size:12.5px;color:var(--water);background:rgba(39,208,189,.08);border:1px solid var(--panel-line);border-radius:99px;padding:6px 14px;cursor:pointer;transition:.2s;white-space:nowrap}
+  .info-btn:hover,.info-btn.on{background:rgba(39,208,189,.18);color:var(--txt)}
+  .explain{margin:0 0 24px;background:var(--panel);border:1px solid var(--panel-line);border-radius:14px;padding:4px 20px}
+  .explain[hidden]{display:none}
+  .ex-item{display:flex;gap:16px;padding:13px 0;border-bottom:1px solid rgba(108,196,196,.08);font-size:13.5px;align-items:flex-start}
+  .ex-item:last-child{border-bottom:none}
+  .ex-item b{color:var(--water);min-width:118px;flex:0 0 auto;font-family:var(--font-mono);font-weight:600;font-size:12.5px;padding-top:1px}
+  .ex-item span{color:var(--muted)}
+  .tier{font-family:var(--font-mono);font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;letter-spacing:.04em;white-space:nowrap;display:inline-block;vertical-align:middle}
+  .tier::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:middle;background:currentColor}
+  .t-lead{background:rgba(39,208,189,.18);color:#43e3d3}
+  .t-coin{background:rgba(243,178,74,.18);color:#f6c266}
+  .t-lag{background:rgba(160,180,182,.16);color:#aebfc1}
+  .legend{font-family:var(--font-mono);font-size:12px;color:var(--muted);margin:0 0 24px;display:flex;gap:16px;flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .ld{width:8px;height:8px;border-radius:50%}
+  /* snapshot: one per row */
+  .snap-grid{display:flex;flex-direction:column;gap:14px}
+  .stat{display:flex;gap:24px;align-items:center;background:var(--panel);border:1px solid var(--panel-line);border-radius:14px;padding:18px 22px;position:relative;overflow:hidden}
+  .stat::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--water),var(--water-deep))}
+  .stat-info{flex:0 0 200px}
+  .stat .lab{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px;justify-content:space-between}
+  .stat .val{font-family:var(--font-mono);font-size:30px;font-weight:700;margin-top:6px;color:var(--txt);display:flex;align-items:baseline}
+  .stat .val small{font-size:14px;color:var(--muted);font-weight:400}
+  .stat .delta{margin-left:auto;font-size:11.5px;color:var(--muted);font-weight:500;align-self:center}
+  .stat .period{font-family:var(--font-mono);font-size:10px;color:var(--muted2);margin-top:6px;letter-spacing:.03em}
+  .stat .note{font-size:11.5px;color:var(--muted2);margin-top:3px}
+  .chartbox{flex:1 1 auto;position:relative;min-width:0}
+  .chart{display:block;width:100%;height:auto}
+  .axt{font-family:var(--font-mono);font-size:10px;fill:#9fb3b5}
+  .tip{position:absolute;top:0;transform:translateX(-50%);background:rgba(7,21,26,.95);border:1px solid var(--panel-line);border-radius:7px;padding:4px 9px;font-family:var(--font-mono);font-size:11px;color:var(--txt);pointer-events:none;white-space:nowrap;z-index:5}
+  .tip[hidden]{display:none}
+  .tip b{color:var(--water)}
+  @media(max-width:640px){.stat{flex-direction:column;align-items:stretch;gap:12px}.stat-info{flex:auto}}
+  .snap-date{font-family:var(--font-mono);font-size:11.5px;color:var(--muted2);margin-top:16px}
+  /* verdict panel */
+  .vpanel{background:linear-gradient(135deg,rgba(39,208,189,.09),rgba(14,140,134,.03));border:1px solid var(--panel-line);border-left:4px solid var(--water);border-radius:14px;padding:20px 22px;margin-bottom:26px}
+  .vp-head{font-family:var(--font-mono);font-size:12px;color:var(--water);letter-spacing:.1em;margin-bottom:8px}
+  .vp-sum{font-family:var(--font-display);font-size:25px;font-weight:600;margin-bottom:13px;transition:color .4s}
+  .vpanel ul{list-style:none;display:flex;flex-direction:column;gap:7px;margin-bottom:13px}
+  .vpanel li{font-size:13.5px;color:var(--muted);padding-left:18px;position:relative;line-height:1.55}
+  .vpanel li::before{content:"▸";position:absolute;left:0;color:var(--water)}
+  .vp-watch{font-size:13px;color:var(--muted);border-top:1px solid rgba(108,196,196,.12);padding-top:11px}
+  .vp-watch b{color:var(--amber)}
+  .gauge-row{display:grid;grid-template-columns:230px 1fr;gap:34px;align-items:start}
+  @media(max-width:720px){.gauge-row{grid-template-columns:1fr;gap:24px}}
+  .tank-wrap{position:sticky;top:80px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .verdict{text-align:center}
+  .verdict .vt{font-family:var(--font-display);font-size:21px;font-weight:600;transition:color .4s}
+  .verdict .vd{font-size:13px;color:var(--muted);margin-top:4px;max-width:210px}
+  .risk-tag{font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;padding:5px 12px;border-radius:99px;border:1px solid var(--panel-line);transition:.4s}
+  .cl-note{font-size:12.5px;color:var(--muted2);margin-bottom:10px}
+  .checklist{list-style:none;display:flex;flex-direction:column;gap:10px}
+  .check{display:flex;gap:14px;align-items:flex-start;background:var(--panel);border:1px solid var(--panel-line);border-radius:13px;padding:15px 17px;cursor:pointer;transition:.22s;user-select:none;-webkit-tap-highlight-color:transparent}
+  .check:hover{border-color:rgba(108,196,196,.36);background:rgba(255,255,255,.05)}
+  .check.on{border-color:var(--red);background:rgba(239,106,95,.08)}
+  .check input{appearance:none;width:21px;height:21px;border:1.6px solid var(--muted2);border-radius:6px;flex:0 0 auto;margin-top:2px;cursor:pointer;transition:.2s;position:relative}
+  .check input:checked{background:var(--red);border-color:var(--red)}
+  .check input:checked::after{content:"\2713";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#0a0a0a;font-size:13px;font-weight:700}
+  .check .ct{font-size:15px;font-weight:500}
+  .check .cd{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .check .idx{font-family:var(--font-mono);font-size:11px;color:var(--muted2);margin-top:3px}
+  .triple{margin-top:18px;font-size:13px;color:var(--muted);border-left:2px solid var(--amber);padding:4px 0 4px 14px}
+  .triple b{color:var(--amber);font-weight:600}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  @media(max-width:760px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--panel-line);border-radius:16px;padding:22px;transition:.25s}
+  .card:hover{transform:translateY(-3px);border-color:rgba(108,196,196,.34)}
+  .card.key{border-color:rgba(243,178,74,.32)}
+  .card.full{grid-column:1/-1}
+  .card-h{display:flex;align-items:center;gap:11px;margin-bottom:4px;flex-wrap:wrap}
+  .badge{font-family:var(--font-mono);font-size:12px;font-weight:700;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(39,208,189,.14);color:var(--water);flex:0 0 auto}
+  .card.key .badge{background:rgba(243,178,74,.16);color:var(--amber)}
+  .card-t{font-size:17px;font-weight:700}
+  .card-tag{font-size:12px;color:var(--muted)}
+  .star{margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--amber);letter-spacing:.05em}
+  .ind{border-top:1px solid rgba(108,196,196,.1);padding-top:11px;margin-top:11px}
+  .ind:first-of-type{margin-top:14px}
+  .ind .nm{font-size:14.5px;font-weight:500;display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .ind .nm .nml{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ind .nm .src{font-family:var(--font-mono);font-size:10.5px;color:var(--muted2);font-weight:400;white-space:nowrap}
+  .sig{display:flex;gap:8px;margin-top:7px;font-size:12.5px}
+  .sig div{flex:1;padding:6px 9px;border-radius:8px;line-height:1.45}
+  .sig .up{background:rgba(39,208,189,.09);color:#9fe7df;border:1px solid rgba(39,208,189,.18)}
+  .sig .dn{background:rgba(239,106,95,.08);color:#f3b1ab;border:1px solid rgba(239,106,95,.18)}
+  .sig .ar{font-family:var(--font-mono);font-weight:700;opacity:.8;margin-right:3px}
+  .eg{margin-top:13px;border-top:1px dashed rgba(108,196,196,.18);padding-top:11px;font-size:12px;line-height:1.55}
+  .eg-row{display:flex;gap:8px;margin-top:5px}
+  .eg-row:first-child{margin-top:0}
+  .eg-tag{font-family:var(--font-mono);font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;flex:0 0 auto;height:fit-content;white-space:nowrap}
+  .eg-up .eg-tag{background:rgba(39,208,189,.14);color:#9fe7df}
+  .eg-dn .eg-tag{background:rgba(239,106,95,.12);color:#f3b1ab}
+  .eg-tx{color:var(--muted)}
+  .gex{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:600px){.gex{grid-template-columns:1fr}}
+  .gex h5{font-family:var(--font-mono);font-size:11px;margin-bottom:7px;letter-spacing:.04em}
+  .gex.up h5{color:#9fe7df}.gex.dn h5{color:#f3b1ab}
+  .gex ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+  .gex li{font-size:12.5px;color:var(--muted);padding-left:12px;position:relative;line-height:1.5}
+  .gex li::before{content:"·";position:absolute;left:2px;color:var(--muted2)}
+  .tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px;counter-reset:t}
+  .tool{background:var(--panel);border:1px solid var(--panel-line);border-radius:13px;padding:16px 18px;position:relative}
+  .tool::before{counter-increment:t;content:counter(t,decimal-leading-zero);font-family:var(--font-mono);font-size:12px;color:var(--water-deep);display:block;margin-bottom:6px}
+  .tool b{font-size:14.5px;font-weight:700}
+  .tool p{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .tools-note{font-size:13px;color:var(--muted2);margin-top:18px;font-style:italic}
+  .src-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .src-col h4{font-family:var(--font-mono);font-size:12.5px;color:var(--water);letter-spacing:.08em;margin-bottom:11px;text-transform:uppercase}
+  .src-col ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+  .src-col li{font-size:13.5px;color:var(--muted)}
+  .src-col li b{color:var(--txt);font-weight:500}
+  footer{padding:40px 0 70px;border-top:1px solid rgba(108,196,196,.08);color:var(--muted2);font-size:12.5px}
+  footer .disc{background:rgba(239,106,95,.05);border:1px solid rgba(239,106,95,.15);border-radius:12px;padding:16px 18px;color:var(--muted);font-size:13px;line-height:1.65}
+  footer .meta{margin-top:18px;font-family:var(--font-mono);font-size:11px;letter-spacing:.05em}
+  @media(max-width:720px){.tank-wrap{position:static;top:auto;max-width:300px;margin:0 auto}}
+  @media(max-width:600px){.wrap{padding:0 16px}nav .wrap{gap:18px}nav a{display:none}.navpill{margin-left:auto}header.hero{padding:50px 0 20px}section{padding:34px 0}.lede{font-size:15.5px}.gauge-row{gap:20px}.sec-sub{font-size:14px}.card{padding:18px}.sig{font-size:12px}}
+  @media(max-width:520px){.ex-item{flex-direction:column;gap:3px}.ex-item b{min-width:0}}
+  @media(max-width:400px){.sig{flex-direction:column;gap:6px}h1{font-size:34px}}
+  .read{font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;border-left:2px solid var(--water);padding-left:11px;background:rgba(39,208,189,.04);border-radius:0 6px 6px 0;padding-top:4px;padding-bottom:4px}
+  .sighdr{display:flex;gap:8px;margin-top:13px;font-family:var(--font-mono);font-size:10.5px;font-weight:700}
+  .sighdr span{flex:1;padding:0 2px}
+  .sighdr .up{color:#9fe7df}.sighdr .dn{color:#f3b1ab}
+</style>
+</head>
+<body>
+<nav><div class="wrap"><span class="brand">&#9677; 蓄水池监控台</span><a href="#snap">当前读数</a><a href="#gauge">水位/结论</a><a href="#cards">核心指标</a><a href="#tools">降温工具</a><a href="#src">数据源</a><span class="navpill" id="navpill">退潮信号 0/7</span></div></nav>
+<div class="wrap">
+  <header class="hero">
+    <div class="kicker rv">A-Share Liquidity Reservoir · Monitor</div>
+    <h1 class="rv" style="animation-delay:.08s">A股「<span class="em">蓄水池</span>」<br>监控仪表盘</h1>
+    <p class="lede rv" style="animation-delay:.18s">盯住五件事：<b>水位、那只手、水温、水龙头、病因</b>。水位计会<b>根据当前数据自动判定</b>。数据来自 <code style="font-family:var(--font-mono);color:var(--water)">data.json</code>，可由定时任务更新。</p>
+  </header>
+
+  <section id="snap" class="rv" style="animation-delay:.24s">
+    <div class="sec-h"><span class="sec-n">00</span><span class="sec-t">当前读数</span><button class="info-btn" id="infoBtn">&#9432; 读数说明</button></div>
+    <p class="sec-sub">一行一个，含近12个月折线(横轴月份 + 纵轴数值，<b>鼠标移上去看每月定位</b>)，并标注时效。</p>
+    <div class="explain" id="explain" hidden><div id="explainBody"></div></div>
+    <div class="snap-grid" id="snapGrid"></div>
+    <div class="snap-date"><span id="snapDate"></span><span id="dataflag" style="color:var(--amber)"></span></div>
+  </section>
+
+  <section id="gauge">
+    <div class="sec-h"><span class="sec-n">01</span><span class="sec-t">水位计 · 自动判定</span></div>
+    <p class="sec-sub">下面是<b>根据当前数据自动给出的结论</b>；底部清单可勾选<b>推演</b>——若某退潮信号出现，看水位如何回落。</p>
+    <div class="vpanel" id="verdictPanel"></div>
+    <div class="gauge-row">
+      <div class="tank-wrap">
+        <svg id="tank" width="180" height="240" viewBox="0 0 180 240">
+          <defs><clipPath id="tankClip"><rect x="26" y="20" width="128" height="200" rx="16"/></clipPath><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--water)"/><stop offset="1" stop-color="var(--water-deep)"/></linearGradient></defs>
+          <g stroke="rgba(134,163,166,.3)" stroke-width="1"><line x1="158" y1="20" x2="166" y2="20"/><line x1="158" y1="70" x2="166" y2="70"/><line x1="158" y1="120" x2="166" y2="120"/><line x1="158" y1="170" x2="166" y2="170"/><line x1="158" y1="220" x2="166" y2="220"/></g>
+          <g clip-path="url(#tankClip)"><rect x="26" y="20" width="128" height="200" fill="rgba(255,255,255,.03)"/><g id="waterG"><path id="wave1" d="" fill="url(#wg)" opacity=".95"/><path id="wave2" d="" fill="url(#wg)" opacity=".5"/></g></g>
+          <rect x="26" y="20" width="128" height="200" rx="16" fill="none" stroke="rgba(108,196,196,.4)" stroke-width="2"/>
+        </svg>
+        <div class="verdict"><div class="vt" id="vt" style="color:var(--water)">仍在蓄水</div><div class="vd" id="vd">水位充沛，那只手在场，政策仍偏托底。</div></div>
+        <div class="risk-tag" id="rtag" style="color:var(--water);border-color:rgba(39,208,189,.4)">RISK 0 / 7</div>
+      </div>
+      <div>
+        <div class="cl-note">退潮信号清单(已按当前数据自动判定，勾选可推演)：</div>
+        <div class="checklist" id="cl"></div>
+      </div>
+    </div>
+    <p class="triple">最干脆的三个“放水”信号：<b>国家队净卖出 + IPO大放水 + 政策喊“防过热”</b>。三者同现，基本就是水要往外放了。</p>
+  </section>
+
+  <section id="cards">
+    <div class="sec-h"><span class="sec-n">02</span><span class="sec-t">六组核心指标</span></div>
+    <p class="sec-sub">这六组是上面<b>水位计结论的六个依据</b>——每组回答一个问题，判断池子在“蓄水(利多)”还是“退潮(利空)”。每张卡：先看<b>“问”</b>那行它在判断什么，再看左青<span style="color:#9fe7df">▲＝偏蓄水</span>、右红<span style="color:#f3b1ab">▼＝偏退潮</span>，底部是真实例子。六组合起来＝顶部判定。★为最关键的组。</p>
+    <div class="legend"><span><i class="ld" style="background:#43e3d3"></i>领先＝可提前预警</span><span><i class="ld" style="background:#f6c266"></i>同步＝与行情同步</span><span><i class="ld" style="background:#aebfc1"></i>滞后＝只能事后确认</span></div>
+    <div class="cards" id="cardGrid"></div>
+  </section>
+
+  <section id="tools">
+    <div class="sec-h"><span class="sec-n">03</span><span class="sec-t">散户过热时的「降温工具箱」</span></div>
+    <p class="sec-sub">历史规律梳理，非预测。力度通常“宁慢勿急”——2015年急刹车的教训，使其偏好“慢牛”式降温。</p>
+    <div class="tools" id="toolWrap"></div>
+    <p class="tools-note">关键：过热时大概率“温柔地拧小水龙头”，而非猛拔塞子。</p>
+  </section>
+
+  <section id="src">
+    <div class="sec-h"><span class="sec-n">04</span><span class="sec-t">数据源</span></div>
+    <p class="sec-sub">交叉验证原则：流动性 + 国家队 + 口风 至少两组同向，结论才较可靠。</p>
+    <div class="src-grid" id="srcWrap"></div>
+  </section>
+
+  <footer>
+    <div class="disc"><b style="color:var(--txt)">重要提醒 ·</b> 自动判定只是基于 data.json 当前数据的<b>启发式读法</b>，是“水温/姿态”判断，不是涨跌预测,也不构成投资建议。强干预有副作用：价格扭曲、国家队退出难、滋生“反正有人托底”的赌徒心理。</div>
+    <div class="meta">A股「蓄水池」监控仪表盘 · 数据见 data.json · 读数请按数据源自行更新</div>
+  </footer>
+</div>
+
+<script type="application/json" id="fallback-data">{
+  "meta": {
+    "snapshotLabel": "SNAPSHOT · 2026年4月",
+    "updated": "2026-04",
+    "dataNote": "由 pull.py 于 2026-06-04 自动更新；社融存量/国家队持仓为央行/季报口径，如接口缺失则保留人工值。其余为 akshare 实时取数。"
+  },
+  "tierLegend": "🟢 领先＝可提前预警、据此行动　🟡 同步＝与行情同步　⚪ 滞后＝只能事后确认",
+  "snapshot": [
+    {
+      "id": "m2",
+      "axis": "同比 %",
+      "label": "M2 同比",
+      "unit": "%",
+      "value": 8.6,
+      "tier": "同步",
+      "period": "近12月 · 同比(YoY)",
+      "note": "4月末余额约353万亿",
+      "desc": "广义货币供给的同比增速(本月对去年同月,非环比)。≥8%且平稳＝蓄水充足；持续走低＝放水节奏退潮。注意同比偏平滑、本身略滞后。",
+      "series": [
+        7.9,
+        8.3,
+        8.8,
+        8.8,
+        8.4,
+        8.2,
+        8.0,
+        8.5,
+        9.0,
+        9.0,
+        8.5,
+        8.6
+      ]
+    },
+    {
+      "id": "m1",
+      "axis": "同比 %",
+      "label": "M1 同比",
+      "unit": "%",
+      "value": 5.0,
+      "tier": "领先",
+      "period": "近12月 · 同比(YoY)",
+      "note": "M1口径2025年起已调整",
+      "desc": "企业与居民“活钱”的同比增速,比M2更领先。回升＝资金活跃；走弱＝钱在趴窝。2025年起口径已改,新旧不可直接比。",
+      "series": [
+        2.3,
+        4.6,
+        5.6,
+        6.0,
+        7.2,
+        6.2,
+        4.9,
+        3.8,
+        4.9,
+        5.9,
+        5.1,
+        5.0
+      ]
+    },
+    {
+      "id": "scissor",
+      "axis": "百分点",
+      "label": "M2–M1 剪刀差",
+      "unit": "pct",
+      "value": 3.6,
+      "tier": "同步",
+      "period": "近12月 · 百分点",
+      "note": "连续约10个月收窄",
+      "desc": "M2与M1同比增速之差。收窄＝资金活化、循环加快(偏正面)；走阔＝资金又趴窝。",
+      "series": [
+        5.6,
+        3.7,
+        3.2,
+        2.8,
+        1.2,
+        2.0,
+        3.1,
+        4.7,
+        4.1,
+        3.1,
+        3.4,
+        3.6
+      ]
+    },
+    {
+      "id": "tsf",
+      "axis": "万亿元",
+      "label": "社融存量(余额)",
+      "unit": "万亿",
+      "value": 456.89,
+      "tier": "同步",
+      "period": "近12月 · 余额(万亿)·同比+7.8%",
+      "note": "2026年4月末·央行实际值",
+      "desc": "社会融资规模存量(余额)：实体经济从金融体系拿到的钱总量。2026年4月末456.89万亿、同比+7.8%。余额几乎只涨，重点看同比是否回落、增量够不够。近4个月(449.11→451.4→456.46→456.89)为央行实际值。",
+      "series": [
+        425,
+        428,
+        431,
+        434,
+        438,
+        441,
+        444,
+        447,
+        449.11,
+        451.4,
+        456.46,
+        456.89
+      ]
+    },
+    {
+      "id": "team",
+      "axis": "万亿元",
+      "label": "国家队 ETF 持仓",
+      "unit": "万亿",
+      "value": 1.28,
+      "tier": "滞后",
+      "period": "近12月 · 万亿(季报,滞后)",
+      "note": "季报披露·只能事后确认",
+      "desc": "中央汇金等持有的ETF市值,只在基金季报披露,严重滞后。要抓早,改看B组‘ETF份额日度净申赎’。",
+      "series": [
+        1.0,
+        1.05,
+        1.1,
+        1.16,
+        1.2,
+        1.23,
+        1.25,
+        1.26,
+        1.27,
+        1.27,
+        1.28,
+        1.28
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "letter": "A",
+      "title": "货币与流动性",
+      "tag": "水位有多高",
+      "key": false,
+      "star": "",
+      "rows": [
+        {
+          "name": "M2 / M1 同比",
+          "src": "人民银行·月",
+          "up": "≥8%平稳、M1回升",
+          "dn": "持续走低",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "同步",
+          "current": "蓄水"
+        },
+        {
+          "name": "M2–M1 剪刀差",
+          "src": "自算·月",
+          "up": "收窄(钱在活化)",
+          "dn": "重新走阔",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "同步",
+          "current": "蓄水"
+        },
+        {
+          "name": "政策利率 / 降准降息",
+          "src": "人民银行·不定",
+          "up": "宽松、降准降息",
+          "dn": "加息收紧",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "领先"
+        }
+      ],
+      "egUpL": "放水例",
+      "egUp": "2024年12月政治局会议定调“适度宽松”货币政策(14年来首次)，随后降准降息",
+      "egDnL": "收水例",
+      "egDn": "重提“稳健”、央行连续净回笼、暂停降息",
+      "read": "问：市场里钱多不多、在不在加速？  M2/M1 增速越高越在加速、剪刀差越收窄＝水越多越活＝蓄水。"
+    },
+    {
+      "letter": "B",
+      "title": "国家队与政策托底",
+      "tag": "那只“手”还在不在",
+      "key": true,
+      "star": "★ 最关键",
+      "rows": [
+        {
+          "name": "ETF 份额(日度净申赎)",
+          "src": "交易所/基金·日",
+          "up": "净申购(尤其跌时吸筹)",
+          "dn": "持续净赎回",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "领先"
+        },
+        {
+          "name": "平准表态 / 互换便利",
+          "src": "央行·官媒",
+          "up": "“坚决维护”、扩容续作",
+          "dn": "淡化、停用",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "领先"
+        },
+        {
+          "name": "中央汇金持仓(季报)",
+          "src": "基金季报·季",
+          "up": "增持或维持",
+          "dn": "开始减持",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "滞后",
+          "current": "蓄水"
+        }
+      ],
+      "egUpL": "托底例",
+      "egUp": "2025年4月大跌时中央汇金增持ETF、央行给再贷款支持；宽基ETF“价跌、份额却增”",
+      "egDnL": "缩手例",
+      "egDn": "宽基ETF连续数周净赎回、官方不再提“维护稳定”",
+      "read": "问：跌的时候有没有“国家队”在托底？  跌时 ETF 被大额买入(份额增)、官方喊“维护”＝托底；持续被赎回、不再表态＝缩手。"
+    },
+    {
+      "letter": "C",
+      "title": "资金面与情绪",
+      "tag": "水有没有沸腾",
+      "key": true,
+      "star": "★ 过热表",
+      "rows": [
+        {
+          "name": "两融余额 / 杠杆",
+          "src": "交易所·日",
+          "up": "温和上升",
+          "dn": "急速飙升(过热)",
+          "au": "▲",
+          "ad": "🔥",
+          "tier": "领先",
+          "current": "蓄水"
+        },
+        {
+          "name": "大盘 PE/PB 估值",
+          "src": "中证指数·日",
+          "up": "修复中",
+          "dn": "显著高于中枢",
+          "au": "▲",
+          "ad": "🔥",
+          "tier": "领先",
+          "current": "退潮"
+        },
+        {
+          "name": "成交额 / 新增开户",
+          "src": "交易所/结算",
+          "up": "放量但稳",
+          "dn": "天量、暴增",
+          "au": "▲",
+          "ad": "🔥",
+          "tier": "同步"
+        }
+      ],
+      "egUpL": "健康例",
+      "egUp": "成交温和放量、大盘估值仍处历史中枢下方",
+      "egDnL": "过热例 🔥",
+      "egDn": "两融逼近历史高位、单日成交连破2万亿、爆款基金一日售罄、开户暴增(类似2015、2021抱团高点)",
+      "read": "问：市场热度正常还是快过热了？  温和放量＝健康；杠杆飙升、估值离谱、全民开户＝过热(常是顶部前兆)。"
+    },
+    {
+      "letter": "D",
+      "title": "供给端",
+      "tag": "水龙头开多大",
+      "key": false,
+      "star": "",
+      "rows": [
+        {
+          "name": "IPO 节奏 / 募资",
+          "src": "证监会·月",
+          "up": "放缓/收紧",
+          "dn": "提速、闸门重开",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "领先"
+        },
+        {
+          "name": "再融资(定增)",
+          "src": "交易所·月",
+          "up": "受控",
+          "dn": "大幅放量",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "领先",
+          "current": "蓄水"
+        },
+        {
+          "name": "解禁 / 大股东减持",
+          "src": "交易所·月",
+          "up": "受限约束",
+          "dn": "减持放开",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "同步",
+          "current": "蓄水"
+        }
+      ],
+      "egUpL": "护盘例",
+      "egUp": "2023年8月证监会“阶段性收紧IPO节奏”、减持新规限制大股东套现",
+      "egDnL": "抽水例",
+      "egDn": "IPO重新提速、再融资大幅放量",
+      "read": "问：在不在往池子里“抽水”(发新股)？  IPO/再融资放缓＝少抽水、护盘；突然提速＝开始抽水，保护期可能结束。"
+    },
+    {
+      "letter": "E",
+      "title": "居民资金搬家",
+      "tag": "水从哪儿来",
+      "key": false,
+      "star": "",
+      "rows": [
+        {
+          "name": "居民存款 vs 非银存款",
+          "src": "人民银行·月",
+          "up": "存款“搬家”入市",
+          "dn": "资金回流定存",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "同步"
+        },
+        {
+          "name": "险资/社保权益仓位",
+          "src": "监管总局·季",
+          "up": "比例提升",
+          "dn": "停滞或回撤",
+          "au": "▲",
+          "ad": "▼",
+          "tier": "滞后"
+        }
+      ],
+      "egUpL": "进水例",
+      "egUp": "居民存款少增、非银存款大幅多增(存款搬家)、权益基金热销",
+      "egDnL": "退水例",
+      "egDn": "资金回流定期存款、基金被赎回",
+      "read": "问：有没有真金白银从存款流进股市？  存款“搬家”、基金热销＝活水在进；钱回流定存＝水源枯。"
+    },
+    {
+      "letter": "F",
+      "title": "基本面与宏观",
+      "tag": "病因好没好",
+      "key": false,
+      "star": "",
+      "rows": [
+        {
+          "name": "人民币汇率",
+          "src": "外汇中心·日",
+          "up": "偏弱、需稳",
+          "dn": "稳定/走强",
+          "au": "⚠",
+          "ad": "✓",
+          "tier": "同步",
+          "current": "退潮"
+        },
+        {
+          "name": "CPI / PPI",
+          "src": "统计局·月",
+          "up": "低迷/为负(仍需蓄水)",
+          "dn": "双双回正(理由淡化)",
+          "au": "⚠",
+          "ad": "✓",
+          "tier": "滞后",
+          "current": "蓄水"
+        },
+        {
+          "name": "房地产 / 上市公司ROE",
+          "src": "统计局·季",
+          "up": "仍在下行/弱复苏",
+          "dn": "企稳/盈利改善",
+          "au": "⚠",
+          "ad": "✓",
+          "tier": "滞后"
+        }
+      ],
+      "egUpL": "病未愈(仍需蓄水)",
+      "egUp": "PPI连续为负、CPI低位、70城房价环比仍跌、人民币偏弱",
+      "egDnL": "病好转(理由淡化)",
+      "egDn": "CPI/PPI回正、房价企稳、人民币走强、企业盈利改善",
+      "read": "问：当初要蓄水的“病”好了没？  通缩、房跌、盈利弱＝病没好、仍需托底；通胀回正、房稳、盈利改善＝理由淡化。"
+    },
+    {
+      "letter": "G",
+      "title": "政策口风",
+      "tag": "最灵敏的领先信号 — 话术一变，动作随后到",
+      "key": true,
+      "star": "★",
+      "tier": "领先",
+      "special": "phrases",
+      "upTitle": "▲ 蓄水/托底期 用词",
+      "upText": "维护稳定 · 提振信心 · 活跃资本市场 · 呵护市场 · 中长期资金入市",
+      "dnTitle": "▼ 降温/退潮期 用词",
+      "dnText": "防风险 · 抑制过热 · 理性投资 · 防止脱实向虚 · 挤泡沫",
+      "realUpL": "托底期 真实例子",
+      "realUp": [
+        "2023.7 政治局会议首提“活跃资本市场，提振投资者信心”",
+        "2024.12 政治局会议“稳住楼市股市”＋“适度宽松”货币政策(14年来首次)",
+        "2026.4 政治局会议“稳定和增强资本市场信心”"
+      ],
+      "realDnL": "防风险/降温 真实例子",
+      "realDn": [
+        "“防范化解重点领域金融风险”",
+        "2017–2018 “去杠杆”“抑制资产泡沫”",
+        "“防止资金脱实向虚”"
+      ],
+      "srcLine": "来源：央行、证监会官网；新华社、人民日报；<b>政治局会议、中央经济工作会议</b>公报(分量最重)。",
+      "read": "问：官方的风向往哪吹？  说“维护稳定/活跃市场”＝托底；改口“防过热/防风险”＝要降温(最领先)。"
+    }
+  ],
+  "checklist": [
+    {
+      "ct": "<b>政策口风</b>转为“防过热/防风险”",
+      "cd": "最领先：话术先变,动作随后到——逃顶最该盯这条",
+      "idx": "G组 · 领先",
+      "now": false
+    },
+    {
+      "ct": "两融/场外杠杆<b>过热</b>，监管开始喊清杠杆",
+      "cd": "2015教训:崩盘由清杠杆触发,杠杆+清查表态是领先组合",
+      "idx": "C组 · 领先",
+      "now": false
+    },
+    {
+      "ct": "宽基 ETF <b>持续净赎回</b>(份额日度下降)",
+      "cd": "国家队缩手的日度先行替代,比季报持仓快得多",
+      "idx": "B组 · 领先",
+      "now": false
+    },
+    {
+      "ct": "货币政策由宽松<b>转向收紧</b>",
+      "cd": "加息、净回笼,流动性顺风停止",
+      "idx": "A组 · 领先",
+      "now": false
+    },
+    {
+      "ct": "IPO / 再融资明显<b>提速</b>，闸门重开",
+      "cd": "官方判断市场“扛得住抽水”,保护期结束",
+      "idx": "D组 · 领先",
+      "now": false
+    },
+    {
+      "ct": "中央汇金持仓季报<b>转为减持</b>",
+      "cd": "滞后确认——看到时往往已晚,仅作复盘",
+      "idx": "B组 · 滞后",
+      "now": false
+    },
+    {
+      "ct": "通缩结束、消费回暖、人民币稳",
+      "cd": "病因消失,应急蓄水的理由淡化(慢变量)",
+      "idx": "F组 · 滞后",
+      "now": false
+    }
+  ],
+  "tools": [
+    {
+      "name": "收杠杆",
+      "desc": "提高两融保证金、清查场外配资/伞形信托"
+    },
+    {
+      "name": "放供给",
+      "desc": "加快 IPO、再融资，用新股吸走过剩资金"
+    },
+    {
+      "name": "国家队转向",
+      "desc": "获利了结，由买转卖"
+    },
+    {
+      "name": "预期管理",
+      "desc": "官媒提示风险、窗口指导"
+    },
+    {
+      "name": "管交易",
+      "desc": "收紧程序化/量化交易、严查违规"
+    },
+    {
+      "name": "微调货币",
+      "desc": "减少放水、边际收紧"
+    },
+    {
+      "name": "极端手段",
+      "desc": "调整印花税等交易成本(历史上用过)"
+    }
+  ],
+  "sources": [
+    {
+      "head": "官方 · 一手免费",
+      "items": [
+        "<b>中国人民银行</b> M0/M1/M2、社融、利率",
+        "<b>国家统计局</b> CPI/PPI/GDP/房地产",
+        "<b>中国证监会</b> IPO、政策、表态",
+        "<b>沪深交易所</b> 两融(日)、成交、ETF份额(日)",
+        "<b>中国结算</b> 开户数",
+        "<b>中国外汇交易中心</b> 人民币汇率",
+        "<b>政治局 / 中央经济工作会议</b> 公报"
+      ]
+    },
+    {
+      "head": "第三方 · 聚合",
+      "items": [
+        "<b>Wind(万得)</b> / 同花顺 iFinD / 东方财富 Choice",
+        "<b>免费 App</b> 东方财富、同花顺、雪球(可看ETF份额)",
+        "<b>程序化取数</b> akshare / Tushare(Python,适合定时任务)"
+      ]
+    },
+    {
+      "head": "海外可访问",
+      "items": [
+        "<b>Trading Economics</b> 中国 M2/CPI/PPI 一站看",
+        "<b>CEIC</b> / investing.com / TradingView",
+        "<b>Bloomberg / Reuters</b> 财经新闻与口风"
+      ]
+    }
+  ],
+  "assessment": {
+    "asOf": "2026-04",
+    "summary": "仍在蓄水 · 水位偏高",
+    "rationale": [
+      "M2 同比 8.6%（近12月走高）→ 放水节奏的总水位",
+      "M1 同比 5.0% → 活钱活跃度（M1 领先，回升=资金在动）",
+      "M2–M1 剪刀差 3.6pct → 收窄=资金活化、循环加快",
+      "社融存量 456.89万亿（2026年4月末·央行实际值）→ 实体输血力度",
+      "国家队 ETF 持仓 1.28万亿 → 托底仓位（季报滞后确认）"
+    ],
+    "watch": "0 项退潮信号触发（共 7 项）。最该盯的领先信号：政策口风转为“防过热/防风险”；两融/场外杠杆过热，监管开始喊清杠杆；宽基 ETF 持续净赎回(份额日度下降)"
+  }
+}</script>
+<script>
+const FALLBACK=JSON.parse(document.getElementById('fallback-data').textContent);
+function monthLabels(endYM,n){var p=(endYM||'2026-06').split('-'),y=+p[0],m=+p[1],a=[];for(var i=n-1;i>=0;i--){var mm=m-i,yy=y;while(mm<=0){mm+=12;yy--;}a.push((yy%100)+'/'+mm);}return a;}
+var CW=520,CH=150,CpadL=44,CpadR=16,CpadT=14,CpadB=26;
+function chartScale(s){var mn=Math.min.apply(null,s),mx=Math.max.apply(null,s),span=(mx-mn)||1,pad=span*0.18;return {lo:mn-pad,hi:mx+pad};}
+function chart(series,labels,yLabel,lo,hi){
+  var plotW=CW-CpadL-CpadR,plotH=CH-CpadT-CpadB,rng=(hi-lo)||1,baseY=CpadT+plotH;
+  function X(i){return CpadL+(series.length>1?i/(series.length-1):0)*plotW;}
+  function Y(v){return CpadT+(1-(v-lo)/rng)*plotH;}
+  var ticks=[hi,(hi+lo)/2,lo];
+  var grid=ticks.map(function(t){var y=Y(t).toFixed(1);return '<line x1="'+CpadL+'" y1="'+y+'" x2="'+(CW-CpadR)+'" y2="'+y+'" stroke="rgba(108,196,196,.1)"/><text x="'+(CpadL-7)+'" y="'+(+y+3.5)+'" text-anchor="end" class="axt">'+t.toFixed(1)+'</text>';}).join('');
+  var axis='<line x1="'+CpadL+'" y1="'+CpadT+'" x2="'+CpadL+'" y2="'+baseY+'" stroke="rgba(108,196,196,.32)"/><line x1="'+CpadL+'" y1="'+baseY+'" x2="'+(CW-CpadR)+'" y2="'+baseY+'" stroke="rgba(108,196,196,.32)"/>';
+  var xi=[0,3,6,9,11].filter(function(i){return i<series.length;});
+  var xlab=xi.map(function(i){return '<text x="'+X(i).toFixed(1)+'" y="'+(CH-8)+'" text-anchor="middle" class="axt">'+(labels[i]||'')+'</text>';}).join('');
+  var line=series.map(function(v,i){return (i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1);}).join(' ');
+  var area=line+' L '+X(series.length-1).toFixed(1)+' '+baseY+' L '+CpadL+' '+baseY+' Z';
+  var lx=X(series.length-1).toFixed(1),ly=Y(series[series.length-1]).toFixed(1);
+  var cap=yLabel?'<text x="3" y="11" class="axt" style="fill:#aebfc1;font-weight:700">'+yLabel+'</text>':'';
+  return '<svg class="chart" viewBox="0 0 '+CW+' '+CH+'">'+grid+axis+xlab+cap
+    +'<path d="'+area+'" fill="rgba(39,208,189,.10)"/><path d="'+line+'" fill="none" stroke="#3fd6c6" stroke-width="2"/>'
+    +'<line class="cross-line" x1="0" y1="'+CpadT+'" x2="0" y2="'+baseY+'" stroke="#7af0e3" stroke-dasharray="3 3" style="opacity:0"/>'
+    +'<circle class="cross-dot" r="4" fill="#7af0e3" stroke="#07151a" stroke-width="1.5" style="opacity:0"/>'
+    +'<circle cx="'+lx+'" cy="'+ly+'" r="3.2" fill="#7af0e3"/></svg>';
+}
+function wireHover(box){
+  var series=JSON.parse(box.getAttribute('data-series')),labels=JSON.parse(box.getAttribute('data-labels')),unit=box.getAttribute('data-unit')||'',lo=+box.getAttribute('data-lo'),hi=+box.getAttribute('data-hi');
+  var plotW=CW-CpadL-CpadR,plotH=CH-CpadT-CpadB,rng=(hi-lo)||1;
+  var svg=box.querySelector('svg'),tip=box.querySelector('.tip'),cl=svg.querySelector('.cross-line'),cd=svg.querySelector('.cross-dot');
+  function at(clientX){var rect=box.getBoundingClientRect();if(!rect.width)return;var vx=(clientX-rect.left)/rect.width*CW,frac=(vx-CpadL)/plotW;frac=Math.max(0,Math.min(1,frac));var idx=Math.round(frac*(series.length-1));var x=CpadL+(series.length>1?idx/(series.length-1):0)*plotW,y=CpadT+(1-(series[idx]-lo)/rng)*plotH;cl.setAttribute('x1',x);cl.setAttribute('x2',x);cl.style.opacity=1;cd.setAttribute('cx',x);cd.setAttribute('cy',y);cd.style.opacity=1;tip.innerHTML='<b>'+labels[idx]+'</b> '+series[idx].toFixed(1)+unit;tip.hidden=false;tip.style.left=(x/CW*rect.width)+'px';}
+  function clr(){cl.style.opacity=0;cd.style.opacity=0;tip.hidden=true;}
+  box.addEventListener('mousemove',function(e){at(e.clientX);});
+  box.addEventListener('mouseleave',clr);
+  box.addEventListener('touchstart',function(e){at(e.touches[0].clientX);},{passive:true});
+  box.addEventListener('touchmove',function(e){at(e.touches[0].clientX);},{passive:true});
+  box.addEventListener('touchend',clr);
+}
+function fmtDelta(n){return (n>0?'▲ +':(n<0?'▼ ':'· '))+Math.abs(n).toFixed(1);}
+function tierPill(t){if(!t)return '';var c=(t==='领先')?'t-lead':((t==='同步')?'t-coin':'t-lag');return '<span class="tier '+c+'">'+t+'</span>';}
+function unitOf(s){return (s.axis&&s.axis.indexOf('%')>=0)?'%':(s.unit==='万亿'?'万亿':(s.unit==='pct'?'pct':''));}
+function renderSnapshot(d){
+  var labels=monthLabels(d.meta&&d.meta.updated,12);
+  document.getElementById('snapGrid').innerHTML=d.snapshot.map(function(s){
+    var n=s.series.length,prev=n>1?s.series[n-2]:null,last=s.series[n-1];
+    var dl=(prev!==null)?'<span class="delta">'+fmtDelta(last-prev)+'</span>':'';
+    var sc=chartScale(s.series),lab=JSON.stringify(labels).replace(/"/g,'&quot;');
+    return '<div class="stat"><div class="stat-info"><div class="lab"><span>'+s.label+'</span>'+tierPill(s.tier)+'</div>'
+      +'<div class="val">'+s.value+'<small> '+s.unit+'</small>'+dl+'</div>'
+      +'<div class="period">'+(s.period||'')+'</div><div class="note">'+s.note+'</div></div>'
+      +'<div class="chartbox" data-series="'+JSON.stringify(s.series)+'" data-labels="'+lab+'" data-unit="'+unitOf(s)+'" data-lo="'+sc.lo+'" data-hi="'+sc.hi+'">'
+      +chart(s.series,labels,s.axis,sc.lo,sc.hi)+'<div class="tip" hidden></div></div></div>';
+  }).join('');
+  [].slice.call(document.querySelectorAll('#snapGrid .chartbox')).forEach(wireHover);
+  document.getElementById('explainBody').innerHTML='<div class="ex-item"><b>同比 vs 环比</b><span>M2/M1 增速均为<b style="color:var(--water)">同比(YoY)</b>：本月对去年同月，不是环比(对上月)。竖轴画的是<b style="color:var(--water)">增速%</b>而非总量(总量只涨不跌、无信号)；总量见小字。折线为近12个月，鼠标移上看每月定位。</span></div>'
+    +d.snapshot.map(function(s){return '<div class="ex-item"><b>'+s.label+'</b><span>'+s.desc+'</span></div>';}).join('');
+  document.getElementById('snapDate').textContent=((d.meta&&d.meta.snapshotLabel)||'')+' · 仅供校准,非实时 ';
+}
+function renderVerdict(d){var a=d.assessment||{};document.getElementById('verdictPanel').innerHTML='<div class="vp-head">当前判定 · '+(a.asOf||'')+'</div><div class="vp-sum" id="vpSum">'+(a.summary||'')+'</div><ul>'+(a.rationale||[]).map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul><div class="vp-watch">接下来盯：'+(a.watch||'')+'</div>';}
+function curPill(c){var m={'蓄水':['#43e3d3','rgba(39,208,189,.18)'],'退潮':['#f3b1ab','rgba(239,106,95,.16)'],'中性':['#f6c266','rgba(243,178,74,.16)']};var x=m[c];if(!x)return '';return ' <span class="tier" style="color:'+x[0]+';background:'+x[1]+'">● 当前·'+c+'</span>';}
+function groupRows(g){return g.rows.map(function(r){var us=(r.current==='蓄水')?' style="outline:1.5px solid #43e3d3;outline-offset:-1px"':'',ds=(r.current==='退潮')?' style="outline:1.5px solid #ef6a5f;outline-offset:-1px"':'';return '<div class="ind"><div class="nm"><span class="nml">'+r.name+' '+tierPill(r.tier)+curPill(r.current)+'</span><span class="src">'+r.src+'</span></div><div class="sig"><div class="up"'+us+'><span class="ar">'+r.au+'</span>'+r.up+'</div><div class="dn"'+ds+'><span class="ar">'+r.ad+'</span>'+r.dn+'</div></div></div>';}).join('');}
+function egBlock(g){if(!g.egUp&&!g.egDn)return '';return '<div class="eg"><div class="eg-row eg-up"><span class="eg-tag">'+(g.egUpL||'蓄水例')+'</span><span class="eg-tx">'+g.egUp+'</span></div><div class="eg-row eg-dn"><span class="eg-tag">'+(g.egDnL||'退潮例')+'</span><span class="eg-tx">'+g.egDn+'</span></div></div>';}
+function renderGroups(d){document.getElementById('cardGrid').innerHTML=d.groups.map(function(g){var star=g.star?'<span class="star">'+g.star+'</span>':'',kc=g.key?' key':'';var head='<div class="card-h"><span class="badge">'+g.letter+'</span><div><div class="card-t">'+g.title+'</div><div class="card-tag">'+g.tag+'</div></div>'+star+(g.tier?' '+tierPill(g.tier):'')+'</div>';if(g.special==='phrases'){var up=(g.realUp||[]).map(function(x){return '<li>'+x+'</li>';}).join(''),dn=(g.realDn||[]).map(function(x){return '<li>'+x+'</li>';}).join('');return '<div class="card'+kc+' full">'+head+(g.read?'<div class="read">'+g.read+'</div>':'')+'<div class="sig" style="margin-top:14px"><div class="up"><span class="ar">'+g.upTitle+'</span><br>'+g.upText+'</div><div class="dn"><span class="ar">'+g.dnTitle+'</span><br>'+g.dnText+'</div></div><div class="gex"><div class="gex up"><h5>'+(g.realUpL||'')+'</h5><ul>'+up+'</ul></div><div class="gex dn"><h5>'+(g.realDnL||'')+'</h5><ul>'+dn+'</ul></div></div><div class="ind"><div class="nm" style="color:var(--muted);font-weight:400;font-size:13px">'+g.srcLine+'</div></div></div>';}return '<div class="card'+kc+'">'+head+(g.read?'<div class="read">'+g.read+'</div>':'')+'<div class="sighdr"><span class="up">蓄水信号 ▲(利多)</span><span class="dn">退潮信号 ▼(利空)</span></div>'+groupRows(g)+egBlock(g)+'</div>';}).join('');}
+function renderChecklist(d){document.getElementById('cl').innerHTML=d.checklist.map(function(c){return '<label class="check"><input type="checkbox"><div><div class="ct">'+c.ct+'</div><div class="cd">'+c.cd+'</div><div class="idx">'+c.idx+'</div></div></label>';}).join('');}
+function renderTools(d){document.getElementById('toolWrap').innerHTML=d.tools.map(function(t){return '<div class="tool"><b>'+t.name+'</b><p>'+t.desc+'</p></div>';}).join('');}
+function renderSources(d){document.getElementById('srcWrap').innerHTML=d.sources.map(function(c){return '<div class="src-col"><h4>'+c.head+'</h4><ul>'+c.items.map(function(i){return '<li>'+i+'</li>';}).join('')+'</ul></div>';}).join('');}
+var TANK={x:26,w:128,top:20,h:200};
+function wavePath(level,amp,phase){var sY=TANK.top+TANK.h*(1-level),x0=TANK.x,x1=TANK.x+TANK.w,bottom=TANK.top+TANK.h,steps=8,d='M '+x0+' '+sY;for(var i=0;i<=steps;i++){var x=x0+(TANK.w*i/steps),y=sY+Math.sin(i/steps*Math.PI*2+phase)*amp;d+=' L '+x.toFixed(1)+' '+y.toFixed(1);}return d+' L '+x1+' '+bottom+' L '+x0+' '+bottom+' Z';}
+var w1=document.getElementById('wave1'),w2=document.getElementById('wave2'),targetLevel=0.9,curLevel=0.9,tt=0;
+function frame(){tt+=0.04;curLevel+=(targetLevel-curLevel)*0.08;w1.setAttribute('d',wavePath(curLevel,3.2,tt));w2.setAttribute('d',wavePath(curLevel,2.4,tt+1.6));requestAnimationFrame(frame);}
+frame();
+var STATES=[{max:0,lvl:0.90,col:'#27d0bd',vt:'仍在蓄水',vd:'水位充沛，那只手在场，政策仍偏托底。',tagc:'rgba(39,208,189,.4)'},{max:2,lvl:0.72,col:'#27d0bd',vt:'水位偏高 · 留意',vd:'仍以蓄水为主，但已出现转向苗头，提高警觉。',tagc:'rgba(39,208,189,.4)'},{max:4,lvl:0.50,col:'#f3b24a',vt:'攻守转换中',vd:'托底与降温信号交织，市场进入再平衡阶段。',tagc:'rgba(243,178,74,.5)'},{max:7,lvl:0.22,col:'#ef6a5f',vt:'退潮信号密集',vd:'多项迹象指向“那只手在收、池子在放水”，警惕。',tagc:'rgba(239,106,95,.5)'}];
+function pick(n){for(var i=0;i<STATES.length;i++){if(n<=STATES[i].max)return STATES[i];}return STATES[STATES.length-1];}
+function setupGauge(d){
+  var boxes=[].slice.call(document.querySelectorAll('#cl input'));
+  boxes.forEach(function(b,i){b.checked=!!(d.checklist[i]&&d.checklist[i].now);b.closest('.check').classList.toggle('on',b.checked);});
+  var vt=document.getElementById('vt'),vd=document.getElementById('vd'),rtag=document.getElementById('rtag'),navpill=document.getElementById('navpill');
+  function update(){var n=boxes.filter(function(b){return b.checked;}).length,s=pick(n);targetLevel=s.lvl;document.documentElement.style.setProperty('--water',s.col);vt.textContent=s.vt;vt.style.color=s.col;vd.textContent=s.vd;rtag.textContent='RISK '+n+' / 7';rtag.style.color=s.col;rtag.style.borderColor=s.tagc;navpill.textContent='退潮信号 '+n+'/7';navpill.style.color=s.col;var vs=document.getElementById('vpSum');if(vs)vs.style.color=s.col;}
+  boxes.forEach(function(b){b.addEventListener('change',function(e){e.target.closest('.check').classList.toggle('on',e.target.checked);update();});});
+  update();
+}
+function renderAll(d){renderSnapshot(d);renderVerdict(d);renderGroups(d);renderChecklist(d);renderTools(d);renderSources(d);setupGauge(d);}
+renderAll(FALLBACK);
+(function(){var ib=document.getElementById('infoBtn'),ex=document.getElementById('explain');ib.addEventListener('click',function(){ex.hidden=!ex.hidden;ib.classList.toggle('on',!ex.hidden);});})();
+fetch('data.json').then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){renderAll(d);}).catch(function(){document.getElementById('dataflag').textContent='· 使用内置示例(未读取到 data.json，需通过服务器打开)';});
+</script>
+</body>
+</html>
