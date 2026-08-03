@@ -2,7 +2,7 @@
   "meta": {
     "snapshotLabel": "SNAPSHOT · 2026年6月",
     "updated": "2026-06",
-    "dataNote": "由 pull.py 于 2026-07-27 自动更新；社融存量/国家队持仓为央行/季报口径，如接口缺失则保留人工值。其余为 akshare 实时取数。"
+    "dataNote": "由 pull.py 于 2026-08-03 自动更新；社融存量/国家队持仓为央行/季报口径，如接口缺失则保留人工值。其余为 akshare 实时取数。"
   },
   "tierLegend": "🟢 领先＝可提前预警、据此行动　🟡 同步＝与行情同步　⚪ 滞后＝只能事后确认",
   "snapshot": [
@@ -295,7 +295,7 @@
           "au": "▲",
           "ad": "▼",
           "tier": "同步",
-          "current": "中性"
+          "current": "蓄水"
         }
       ],
       "egUpL": "护盘例",
@@ -351,7 +351,7 @@
           "au": "⚠",
           "ad": "✓",
           "tier": "同步",
-          "current": "中性"
+          "current": "退潮"
         },
         {
           "name": "CPI / PPI",
